@@ -1,0 +1,1537 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Finance 2026 Dashboard Prototype</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d9dee8;
+      --green: #13795b;
+      --green-soft: #dff4ea;
+      --amber: #b7791f;
+      --amber-soft: #fff2cf;
+      --red: #bb2d3b;
+      --red-soft: #ffe2e6;
+      --blue: #2364aa;
+      --blue-soft: #e3efff;
+      --violet: #6251a8;
+      --teal: #0f766e;
+      --panel: #eef2f7;
+      --shadow: 0 12px 32px rgba(23, 32, 51, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .shell {
+      width: min(1480px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 40px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 28px;
+      line-height: 1.2;
+      font-weight: 760;
+    }
+
+    .sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      min-height: 36px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      border-color: #1f6f55;
+      background: #1f6f55;
+      color: #fff;
+    }
+
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .status-pill {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 12px 14px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .status-pill strong {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .status-pill span {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 142px;
+      box-shadow: var(--shadow);
+      display: grid;
+      align-content: space-between;
+      gap: 12px;
+    }
+
+    .kpi label {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .kpi .value {
+      font-size: 28px;
+      line-height: 1.08;
+      font-weight: 780;
+      word-break: break-word;
+    }
+
+    .kpi .delta {
+      display: inline-flex;
+      width: fit-content;
+      max-width: 100%;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 680;
+      white-space: normal;
+    }
+
+    .delta.good {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .delta.warn {
+      color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .delta.bad {
+      color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(390px, 0.85fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      min-width: 0;
+    }
+
+    .panel + .panel {
+      margin-top: 16px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .panel h2 {
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .flow-step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px;
+      min-height: 126px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .flow-step .label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .flow-step .amount {
+      font-size: 22px;
+      font-weight: 760;
+      line-height: 1.12;
+      word-break: break-word;
+    }
+
+    .meter {
+      height: 10px;
+      background: #d7dce6;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .meter span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--blue);
+    }
+
+    .meter.cash span {
+      background: var(--teal);
+    }
+
+    .meter.profit span {
+      background: var(--green);
+    }
+
+    .bar-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 124px minmax(0, 1fr) 92px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .bar-name {
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bar-stack {
+      display: grid;
+      gap: 5px;
+    }
+
+    .bar-line {
+      height: 12px;
+      background: #e4e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-line span {
+      display: block;
+      height: 100%;
+      min-width: 2px;
+      border-radius: inherit;
+    }
+
+    .bar-line.plan span {
+      background: #9aa8bf;
+    }
+
+    .bar-line.actual span {
+      background: var(--blue);
+    }
+
+    .bar-value {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend i {
+      width: 10px;
+      height: 10px;
+      display: inline-block;
+      border-radius: 999px;
+      margin-right: 5px;
+      vertical-align: -1px;
+    }
+
+    .status-bars {
+      display: grid;
+      gap: 12px;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: 92px 44px minmax(0, 1fr) 84px;
+      gap: 10px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .status-row .count {
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .mini-bar {
+      height: 14px;
+      background: #e4e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .mini-bar span {
+      display: block;
+      height: 100%;
+      background: var(--violet);
+      border-radius: inherit;
+    }
+
+    .risk-callout {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--amber-soft);
+      background: #fffaf0;
+      border-radius: 8px;
+      padding: 14px;
+      margin-top: 14px;
+    }
+
+    .risk-callout strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .risk-callout .big {
+      font-size: 28px;
+      font-weight: 780;
+      color: var(--amber);
+    }
+
+    .watch-table,
+    .input-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    td {
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .project-name {
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .tag {
+      display: inline-flex;
+      max-width: 100%;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: normal;
+    }
+
+    .tag.red {
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .tag.amber {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .tag.blue {
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .tag.green {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .input-wrap {
+      margin-top: 16px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      max-height: 580px;
+    }
+
+    .input-table {
+      min-width: 1180px;
+    }
+
+    .input-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f0f3f8;
+    }
+
+    .input-table input,
+    .input-table select {
+      width: 100%;
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 8px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .input-table input[type="number"] {
+      text-align: right;
+    }
+
+    .section-spacer {
+      margin-top: 16px;
+    }
+
+    .quality {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+    }
+
+    .quality-score {
+      width: 108px;
+      height: 108px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        conic-gradient(var(--green) var(--score), #dce2eb 0);
+      color: var(--ink);
+      font-size: 26px;
+      font-weight: 780;
+      position: relative;
+    }
+
+    .quality-score::after {
+      content: "";
+      position: absolute;
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: var(--surface);
+    }
+
+    .quality-score span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .quality-list {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .visual-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: stretch;
+    }
+
+    .visual-card {
+      min-height: 340px;
+      display: grid;
+      align-content: start;
+    }
+
+    .visual-card.wide {
+      grid-row: span 2;
+    }
+
+    .viz {
+      width: 100%;
+      min-height: 260px;
+    }
+
+    .waterfall-svg,
+    .bubble-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .axis-label {
+      fill: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .chart-label {
+      fill: var(--ink);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .chart-note {
+      fill: var(--muted);
+      font-size: 11px;
+    }
+
+    .donut-layout {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+      min-height: 260px;
+    }
+
+    .donut {
+      width: 170px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: conic-gradient(var(--blue) 0 80%, var(--teal) 80% 100%);
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+
+    .donut::after {
+      content: "";
+      width: 104px;
+      height: 104px;
+      border-radius: 50%;
+      background: var(--surface);
+      position: absolute;
+    }
+
+    .donut-center {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      display: grid;
+      gap: 3px;
+    }
+
+    .donut-center strong {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .donut-center span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .mix-list,
+    .funnel-list,
+    .story-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .mix-row {
+      display: grid;
+      grid-template-columns: 12px minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .mix-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .mix-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .mix-value {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .funnel {
+      display: grid;
+      gap: 10px;
+      min-height: 260px;
+      align-content: center;
+    }
+
+    .funnel-stage {
+      min-height: 48px;
+      border-radius: 8px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      color: #fff;
+      padding: 10px 14px;
+      margin-inline: var(--inset);
+      background: var(--tone);
+    }
+
+    .funnel-stage strong {
+      display: block;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .funnel-stage span {
+      opacity: 0.86;
+      font-size: 12px;
+    }
+
+    .funnel-stage b {
+      font-size: 18px;
+      white-space: nowrap;
+    }
+
+    .story-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .story-item {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 11px 12px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .story-item strong {
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .story-item span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .top-projects {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .project-bar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 86px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .project-track {
+      position: relative;
+      height: 28px;
+      border-radius: 8px;
+      background: #e7ebf2;
+      overflow: hidden;
+    }
+
+    .project-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--blue);
+    }
+
+    .project-caption {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 9px;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .project-amount {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .empty-state {
+      color: var(--muted);
+      padding: 10px 0 2px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 1180px) {
+      .kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .visual-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .visual-card.wide {
+        grid-row: auto;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100vw - 20px, 1480px);
+        padding-top: 16px;
+      }
+
+      .topbar,
+      .status-strip,
+      .kpi-grid,
+      .flow,
+      .quality,
+      .donut-layout,
+      .story-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .visual-card {
+        min-height: auto;
+      }
+
+      .donut {
+        justify-self: center;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .toolbar {
+        justify-content: stretch;
+      }
+
+      .btn {
+        flex: 1;
+      }
+
+      .bar-row,
+      .status-row {
+        grid-template-columns: 1fr;
+      }
+
+      .bar-value,
+      .status-row .count {
+        text-align: left;
+      }
+
+      .risk-callout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <h1>Finance 2026 Dashboard</h1>
+        <p class="sub">Project finance overview จากข้อมูล input ปัจจุบันในไฟล์ Projects</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn primary" id="focusInput">ไปที่ตารางกรอกข้อมูล</button>
+        <button class="btn" id="resetData">รีเซ็ตข้อมูล</button>
+      </div>
+    </header>
+
+    <section class="status-strip" id="statusStrip"></section>
+    <section class="kpi-grid" id="kpiGrid"></section>
+
+    <section class="visual-grid">
+      <section class="panel visual-card wide">
+        <div class="panel-head">
+          <div>
+            <h2>ภาพรวมว่าเงินหาย/ติดตรงไหน</h2>
+            <p class="hint">อ่านจากซ้ายไปขวา: แผนรายได้ → รายได้จริง → เงินที่ยังไม่เข้า → เงินเข้าจริง</p>
+          </div>
+        </div>
+        <div class="viz" id="waterfallChart"></div>
+        <div class="story-strip" id="storyStrip"></div>
+        <div class="top-projects" id="topProjects"></div>
+      </section>
+
+      <section class="panel visual-card">
+        <div class="panel-head">
+          <div>
+            <h2>รายได้กระจุกที่ไหน</h2>
+            <p class="hint">Donut chart นี้ทำให้เห็น dependency ของ business unit ทันที</p>
+          </div>
+        </div>
+        <div class="donut-layout">
+          <div class="donut" id="mixDonut">
+            <div class="donut-center" id="mixCenter"></div>
+          </div>
+          <div class="mix-list" id="mixList"></div>
+        </div>
+      </section>
+
+      <section class="panel visual-card">
+        <div class="panel-head">
+          <div>
+            <h2>Collection Funnel</h2>
+            <p class="hint">แยกให้เห็นว่า revenue ไม่เท่ากับ cash</p>
+          </div>
+        </div>
+        <div class="funnel" id="collectionFunnel"></div>
+      </section>
+
+      <section class="panel visual-card wide">
+        <div class="panel-head">
+          <div>
+            <h2>Project Bubble Map</h2>
+            <p class="hint">แกนนอน = ทำรายได้เทียบแผน, แกนตั้ง = เงินเข้าเทียบ actual, ขนาดวง = มูลค่า project</p>
+          </div>
+        </div>
+        <div class="viz" id="bubbleChart"></div>
+      </section>
+    </section>
+
+    <section class="main-grid">
+      <div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>เงินจากแผนถึงกำไร</h2>
+            <span class="hint">เห็นเส้นทางเงินแบบไม่ต้องอ่านตาราง</span>
+          </div>
+          <div class="flow" id="moneyFlow"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>รายได้ตาม Business Unit</h2>
+            <div class="legend">
+              <span><i style="background:#9aa8bf"></i>Planned</span>
+              <span><i style="background:#2364aa"></i>Actual</span>
+            </div>
+          </div>
+          <div class="bar-list" id="businessChart"></div>
+        </section>
+      </div>
+
+      <div>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>สถานะงานตามมูลค่า</h2>
+            <span class="hint">นับจำนวน project และมูลค่า actual revenue</span>
+          </div>
+          <div class="status-bars" id="statusBars"></div>
+          <div class="risk-callout" id="concentration"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>คุณภาพข้อมูล</h2>
+            <span class="hint">คะแนนนี้เปลี่ยนตามการกรอกข้อมูล</span>
+          </div>
+          <div class="quality">
+            <div class="quality-score" id="qualityScore"><span>0</span></div>
+            <div class="quality-list" id="qualityList"></div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="panel section-spacer">
+      <div class="panel-head">
+        <h2>Project Watchlist</h2>
+        <span class="hint">รายการที่ควรถูกหยิบคุยใน finance meeting</span>
+      </div>
+      <table class="watch-table">
+        <thead>
+          <tr>
+            <th style="width: 34%">Project</th>
+            <th style="width: 14%">Status</th>
+            <th style="width: 18%">Impact</th>
+            <th>ประเด็น</th>
+          </tr>
+        </thead>
+        <tbody id="watchList"></tbody>
+      </table>
+      <div class="empty-state" id="watchEmpty" hidden>ยังไม่มีรายการที่ต้องติดตามจากข้อมูลชุดนี้</div>
+    </section>
+
+    <section class="panel section-spacer" id="inputSection">
+      <div class="panel-head">
+        <div>
+          <h2>Input / Edit</h2>
+          <p class="hint">แก้ตัวเลขหรือสถานะในตารางนี้ แล้ว dashboard จะคำนวณใหม่ทันที</p>
+        </div>
+      </div>
+      <div class="input-wrap">
+        <table class="input-table">
+          <thead>
+            <tr>
+              <th style="width: 120px">Unit</th>
+              <th style="width: 110px">Code</th>
+              <th style="width: 260px">Project</th>
+              <th style="width: 132px">Status</th>
+              <th style="width: 132px">Revenue Plan</th>
+              <th style="width: 132px">Revenue Actual</th>
+              <th style="width: 132px">Cash</th>
+              <th style="width: 132px">Cost Actual</th>
+              <th style="width: 132px">Profit Actual</th>
+            </tr>
+          </thead>
+          <tbody id="inputRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const seedProjects = [
+      {"category":"Public","number":"1","code":"D26-AXP-002","name":"AXP#2","status":"Blocked","start":"1 Jan 2026","end":"6 Jun 2026","revenuePlan":0,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":0,"profitActual":0},
+      {"category":"Public","number":"2","code":"D25-HOT-001","name":"HOT#1","status":"Done","start":"","end":"","revenuePlan":1500000,"revenueActual":1660000,"cash":0,"costPlan":0,"costActual":0,"profitPlan":0,"profitActual":1660000},
+      {"category":"Public","number":"3","code":"D26-THX-001","name":"Think X #1","status":"Done","start":"","end":"","revenuePlan":1070000,"revenueActual":643000,"cash":0,"costPlan":0,"costActual":423815,"profitPlan":0,"profitActual":219185},
+      {"category":"Public","number":"","code":"D26-THX-002","name":"Think X #2","status":"Blocked","start":"","end":"","revenuePlan":0,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":0,"profitActual":0},
+      {"category":"Public","number":"6","code":"","name":"In-Seed You","status":"Blocked","start":"30 May 2026","end":"1 Jun 2026","revenuePlan":1797000,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":0,"profitActual":0},
+      {"category":"Public","number":"10","code":"D26-HOT-002","name":"HOT#2","status":"In Progress","start":"24 April 2026","end":"19 Sep 2026","revenuePlan":24900000,"revenueActual":23263000,"cash":24376280,"costPlan":15256061.79,"costActual":782,"profitPlan":4270646.07,"profitActual":8810072.67},
+      {"category":"Public","number":"13","code":"D26-TAP-001","name":"Talent Accelerator Program","status":"In Progress","start":"23 Apr 2026","end":"29 Aug 2026","revenuePlan":2710000,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":0,"profitActual":0},
+      {"category":"Public","number":"14","code":"D26-FLP-001","name":"Future Leader Playbook","status":"In Progress","start":"16 Apr 2026","end":"30 Sep 2026","revenuePlan":1255200,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":0,"profitActual":0},
+      {"category":"Public","number":"15","code":"","name":"(ยังไม่ระบุชื่อ)","status":"Not Start","start":"","end":"","revenuePlan":0,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":0,"profitActual":0},
+      {"category":"Corporate","number":"1","code":"D26-CP-001","name":"GiftBox P'Ake NHEALTH","status":"Done","start":"20 Dec 2025","end":"15 Jan 2026","revenuePlan":72765,"revenueActual":75000,"cash":0,"costPlan":0,"costActual":48026,"profitPlan":72765.14,"profitActual":26973.83},
+      {"category":"Corporate","number":"2","code":"D26-CP-002","name":"[LINE] Sales Unlock Workshop","status":"Done","start":"11 Feb 2026","end":"27 Mar 2026","revenuePlan":220050,"revenueActual":220050,"cash":0,"costPlan":0,"costActual":116777,"profitPlan":220050,"profitActual":103273},
+      {"category":"Corporate","number":"3","code":"D26-CP-003","name":"[ThaiOil] Future Digital Skill","status":"In Progress","start":"1 May 2026","end":"31 October 2026","revenuePlan":600000,"revenueActual":414381,"cash":0,"costPlan":300502,"costActual":55416,"profitPlan":299498,"profitActual":358965},
+      {"category":"Corporate","number":"4","code":"D26-CP-004","name":"[PTT GC] Data DIY 2026","status":"In Progress","start":"1 April 2026","end":"31 October 2026","revenuePlan":1485100.45,"revenueActual":1485100.45,"cash":0,"costPlan":995295,"costActual":102089.33,"profitPlan":489805.45,"profitActual":1383011.12},
+      {"category":"Corporate","number":"5","code":"D26-CP-005","name":"[SCB] NLP 2026","status":"In Progress","start":"16 March 2026","end":"21 August 2026","revenuePlan":886886,"revenueActual":936476,"cash":0,"costPlan":639626,"costActual":0,"profitPlan":247260,"profitActual":936476},
+      {"category":"Corporate","number":"6","code":"D26-CP-006","name":"[Castrol] Leadership Development","status":"Done","start":"9 March 2026","end":"23 March 2026","revenuePlan":305162,"revenueActual":295581,"cash":0,"costPlan":0,"costActual":124546,"profitPlan":305162,"profitActual":171035},
+      {"category":"Corporate","number":"7","code":"D26-CP-007","name":"[Central] Future Trends by K. Krating","status":"In Progress","start":"12 May 2026","end":"12 May 2026","revenuePlan":200000,"revenueActual":150000,"cash":0,"costPlan":100000,"costActual":100000,"profitPlan":100000,"profitActual":50000},
+      {"category":"Corporate","number":"10","code":"","name":"[N-Health] The Financial Edge","status":"In Progress","start":"8 May 2026","end":"","revenuePlan":400000,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":400000,"profitActual":0},
+      {"category":"Corporate","number":"11","code":"","name":"(ยังไม่ระบุชื่อ)","status":"Not Start","start":"","end":"","revenuePlan":0,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":0,"profitActual":0},
+      {"category":"Disrupt MBA","number":"1","code":"D25-ONL-001","name":"Disrupt MBA 2026","status":"Not Start","start":"","end":"","revenuePlan":0,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":0,"profitActual":0},
+      {"category":"Other revenue","number":"1","code":"","name":"Conicle","status":"Not Start","start":"","end":"","revenuePlan":0,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":0,"profitActual":0},
+      {"category":"Other revenue","number":"2","code":"","name":"Claude Code-Cowork with FutureSkill","status":"In Progress","start":"10 April 2026","end":"14 August 2026","revenuePlan":251247,"revenueActual":0,"cash":0,"costPlan":0,"costActual":0,"profitPlan":251247,"profitActual":0}
+    ];
+
+    let projects = structuredClone(seedProjects);
+    const statuses = ["Done", "In Progress", "Blocked", "Not Start"];
+    const money = new Intl.NumberFormat("th-TH", {
+      style: "currency",
+      currency: "THB",
+      maximumFractionDigits: 0
+    });
+    const compact = new Intl.NumberFormat("th-TH", {
+      notation: "compact",
+      maximumFractionDigits: 1
+    });
+
+    const sum = (key, rows = projects) => rows.reduce((total, row) => total + Number(row[key] || 0), 0);
+    const pct = (num, den) => den ? num / den : 0;
+    const safeWidth = value => `${Math.max(2, Math.min(100, value * 100))}%`;
+    const statusClass = value => {
+      if (value >= 0.9) return "good";
+      if (value >= 0.7) return "warn";
+      return "bad";
+    };
+    const riskTag = priority => {
+      if (priority === "สูง") return "red";
+      if (priority === "กลาง") return "amber";
+      if (priority === "ข้อมูล") return "blue";
+      return "green";
+    };
+    const palette = ["#2364aa", "#0f766e", "#b7791f", "#6251a8", "#bb2d3b", "#667085"];
+    const statusColors = {
+      "Done": "#13795b",
+      "In Progress": "#2364aa",
+      "Blocked": "#bb2d3b",
+      "Not Start": "#8a94a6"
+    };
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    }[char]));
+
+    function totals() {
+      const revenuePlan = sum("revenuePlan");
+      const revenueActual = sum("revenueActual");
+      const cash = sum("cash");
+      const costActual = sum("costActual");
+      const profitPlan = sum("profitPlan");
+      const profitActual = sum("profitActual");
+      return {
+        revenuePlan,
+        revenueActual,
+        cash,
+        costActual,
+        profitPlan,
+        profitActual,
+        revenueProgress: pct(revenueActual, revenuePlan),
+        cashCoverage: pct(cash, revenueActual),
+        marginActual: pct(profitActual, revenueActual),
+        revenueGap: revenueActual - revenuePlan,
+        collectionGap: cash - revenueActual
+      };
+    }
+
+    function groupBy(key) {
+      return projects.reduce((acc, row) => {
+        const group = row[key] || "Unassigned";
+        if (!acc[group]) acc[group] = [];
+        acc[group].push(row);
+        return acc;
+      }, {});
+    }
+
+    function warningRows() {
+      const rows = [];
+      projects.forEach(project => {
+        const impact = Math.max(project.revenuePlan || 0, project.revenueActual || 0, Math.abs((project.cash || 0) - (project.revenueActual || 0)));
+        const add = (priority, issue, amount = impact) => rows.push({ project, priority, issue, amount });
+        if (project.status === "Blocked" && project.revenuePlan > 0) add("สูง", "ติด Block แต่มีรายได้อยู่ในแผน");
+        if (project.status === "Done" && project.revenueActual > 0 && project.cash <= 0) add("สูง", "งานปิดแล้ว แต่ยังไม่เห็นเงินเข้าจริง");
+        if (project.status === "In Progress" && project.revenuePlan > 0 && project.revenueActual <= 0) add("กลาง", "มี planned revenue แต่ยังไม่มี actual revenue");
+        if (project.revenueActual > 0 && project.cash < project.revenueActual) add("กลาง", "เงินเข้ายังไม่ครบตาม actual revenue", project.revenueActual - project.cash);
+        if (project.revenueActual > 0 && project.costActual <= 0) add("ข้อมูล", "มีรายได้แล้ว แต่ cost actual ยังเป็นศูนย์");
+        const margin = pct(project.profitActual, project.revenueActual);
+        if (project.revenueActual > 0 && margin >= 0.9) add("ข้อมูล", "margin สูงมาก ควรตรวจว่า cost ครบหรือยัง");
+      });
+      return rows.sort((a, b) => b.amount - a.amount).slice(0, 10);
+    }
+
+    function qualitySummary() {
+      let issues = 0;
+      let missingCash = 0;
+      let missingCost = 0;
+      let blockedValue = 0;
+      projects.forEach(project => {
+        if (project.revenueActual > 0 && project.cash <= 0) {
+          issues += 1;
+          missingCash += 1;
+        }
+        if (project.revenueActual > 0 && project.costActual <= 0) {
+          issues += 1;
+          missingCost += 1;
+        }
+        if (project.status === "Blocked" && project.revenuePlan > 0) {
+          issues += 1;
+          blockedValue += project.revenuePlan;
+        }
+      });
+      const score = Math.max(0, Math.round(100 - issues * 7));
+      return { score, missingCash, missingCost, blockedValue, issues };
+    }
+
+    function renderStatusStrip() {
+      const grouped = groupBy("status");
+      const el = document.getElementById("statusStrip");
+      el.innerHTML = statuses.map(status => {
+        const rows = grouped[status] || [];
+        return `<div class="status-pill"><span>${status}</span><strong>${rows.length}</strong><small>${money.format(sum("revenueActual", rows))}</small></div>`;
+      }).join("");
+    }
+
+    function renderKpis() {
+      const t = totals();
+      const kpis = [
+        ["รายได้ตามแผน", money.format(t.revenuePlan), `${projects.length} projects`, "good"],
+        ["รายได้ที่เกิดแล้ว", money.format(t.revenueActual), `${Math.round(t.revenueProgress * 100)}% ของแผน`, statusClass(t.revenueProgress)],
+        ["ยังขาดจากแผน", money.format(Math.abs(t.revenueGap)), t.revenueGap >= 0 ? "เกินแผน" : "ต้องเติม pipeline", t.revenueGap >= 0 ? "good" : "bad"],
+        ["เงินเข้าจริง", money.format(t.cash), `${Math.round(t.cashCoverage * 100)}% ของ actual`, statusClass(t.cashCoverage)],
+        ["เงินที่ยังไม่เข้า", money.format(Math.max(0, -t.collectionGap)), "actual revenue - cash", -t.collectionGap > 0 ? "warn" : "good"],
+        ["กำไรจริง", money.format(t.profitActual), `margin ${Math.round(t.marginActual * 100)}%`, t.marginActual >= 0.4 ? "good" : "warn"]
+      ];
+      document.getElementById("kpiGrid").innerHTML = kpis.map(([label, value, delta, tone]) => `
+        <article class="kpi">
+          <label>${label}</label>
+          <div class="value">${value}</div>
+          <span class="delta ${tone}">${delta}</span>
+        </article>
+      `).join("");
+    }
+
+    function renderWaterfall() {
+      const t = totals();
+      const width = 760;
+      const height = 300;
+      const base = 222;
+      const max = Math.max(t.revenuePlan, t.revenueActual, t.cash, 1);
+      const barHeight = value => Math.max(4, Math.round((Math.max(0, value) / max) * 155));
+      const bars = [
+        { label: "Planned", value: t.revenuePlan, x: 52, color: "#9aa8bf", note: "แผน" },
+        { label: "Actual", value: t.revenueActual, x: 236, color: "#2364aa", note: `${Math.round(t.revenueProgress * 100)}%` },
+        { label: "Cash", value: t.cash, x: 420, color: "#0f766e", note: `${Math.round(t.cashCoverage * 100)}%` },
+        { label: "Profit", value: t.profitActual, x: 604, color: "#13795b", note: `${Math.round(t.marginActual * 100)}% margin` }
+      ];
+      const missingPlan = Math.max(0, t.revenuePlan - t.revenueActual);
+      const uncollected = Math.max(0, t.revenueActual - t.cash);
+      const rects = bars.map(bar => {
+        const h = barHeight(bar.value);
+        return `
+          <rect x="${bar.x}" y="${base - h}" width="104" height="${h}" rx="8" fill="${bar.color}"></rect>
+          <text x="${bar.x + 52}" y="${base + 24}" text-anchor="middle" class="chart-label">${bar.label}</text>
+          <text x="${bar.x + 52}" y="${base - h - 12}" text-anchor="middle" class="chart-label">${compact.format(bar.value)}</text>
+          <text x="${bar.x + 52}" y="${base + 42}" text-anchor="middle" class="chart-note">${bar.note}</text>
+        `;
+      }).join("");
+      document.getElementById("waterfallChart").innerHTML = `
+        <svg class="waterfall-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Revenue waterfall">
+          <line x1="28" y1="${base}" x2="732" y2="${base}" stroke="#cbd3df" stroke-width="1"></line>
+          <path d="M156 ${base - barHeight(t.revenuePlan)} C190 ${base - barHeight(t.revenuePlan)} 196 ${base - barHeight(t.revenueActual)} 236 ${base - barHeight(t.revenueActual)}" fill="none" stroke="#cbd3df" stroke-width="2" stroke-dasharray="6 6"></path>
+          <path d="M340 ${base - barHeight(t.revenueActual)} C374 ${base - barHeight(t.revenueActual)} 382 ${base - barHeight(t.cash)} 420 ${base - barHeight(t.cash)}" fill="none" stroke="#cbd3df" stroke-width="2" stroke-dasharray="6 6"></path>
+          ${rects}
+          <g>
+            <rect x="172" y="38" width="138" height="50" rx="8" fill="#ffe2e6"></rect>
+            <text x="241" y="58" text-anchor="middle" class="chart-label" fill="#bb2d3b">ขาดจากแผน</text>
+            <text x="241" y="78" text-anchor="middle" class="chart-label" fill="#bb2d3b">${money.format(missingPlan)}</text>
+          </g>
+          <g>
+            <rect x="356" y="38" width="138" height="50" rx="8" fill="#fff2cf"></rect>
+            <text x="425" y="58" text-anchor="middle" class="chart-label" fill="#b7791f">เงินยังไม่เข้า</text>
+            <text x="425" y="78" text-anchor="middle" class="chart-label" fill="#b7791f">${money.format(uncollected)}</text>
+          </g>
+        </svg>
+      `;
+    }
+
+    function renderStoryStrip() {
+      const t = totals();
+      const largest = projects.reduce((best, row) => row.revenueActual > (best?.revenueActual || 0) ? row : best, null);
+      const concentration = largest && t.revenueActual ? pct(largest.revenueActual, t.revenueActual) : 0;
+      const stories = [
+        [`${Math.round(t.revenueProgress * 100)}%`, "รายได้จริงเทียบแผน"],
+        [`${Math.round(t.cashCoverage * 100)}%`, "เงินเข้าเทียบ actual revenue"],
+        [`${Math.round(concentration * 100)}%`, `รายได้อยู่ที่ ${largest ? largest.name : "-"}`]
+      ];
+      document.getElementById("storyStrip").innerHTML = stories.map(([value, label]) => `
+        <div class="story-item"><strong>${esc(value)}</strong><span>${esc(label)}</span></div>
+      `).join("");
+    }
+
+    function renderTopProjects() {
+      const rows = [...projects]
+        .filter(project => project.revenueActual > 0)
+        .sort((a, b) => b.revenueActual - a.revenueActual)
+        .slice(0, 5);
+      const max = Math.max(...rows.map(row => row.revenueActual), 1);
+      document.getElementById("topProjects").innerHTML = `
+        <div class="hint">Top actual revenue projects</div>
+        ${rows.map(project => `
+          <div class="project-bar">
+            <div class="project-track">
+              <div class="project-fill" style="width:${safeWidth(project.revenueActual / max)}; background:${statusColors[project.status] || "var(--blue)"}"></div>
+              <div class="project-caption">${esc(project.name)}</div>
+            </div>
+            <div class="project-amount">${compact.format(project.revenueActual)}</div>
+          </div>
+        `).join("")}
+      `;
+    }
+
+    function renderMixDonut() {
+      const grouped = groupBy("category");
+      const rows = Object.entries(grouped).map(([name, items], index) => ({
+        name,
+        actual: sum("revenueActual", items),
+        color: palette[index % palette.length]
+      })).filter(row => row.actual > 0).sort((a, b) => b.actual - a.actual);
+      const total = rows.reduce((acc, row) => acc + row.actual, 0);
+      let cursor = 0;
+      const gradient = total
+        ? rows.map(row => {
+          const start = cursor;
+          const end = cursor + pct(row.actual, total) * 100;
+          cursor = end;
+          return `${row.color} ${start}% ${end}%`;
+        }).join(", ")
+        : "#dce2eb 0% 100%";
+      const largest = rows[0];
+      document.getElementById("mixDonut").style.background = `conic-gradient(${gradient})`;
+      document.getElementById("mixCenter").innerHTML = `
+        <strong>${largest ? Math.round(pct(largest.actual, total) * 100) : 0}%</strong>
+        <span>${largest ? esc(largest.name) : "No revenue"}</span>
+      `;
+      document.getElementById("mixList").innerHTML = rows.map(row => `
+        <div class="mix-row">
+          <span class="mix-dot" style="background:${row.color}"></span>
+          <span class="mix-name" title="${esc(row.name)}">${esc(row.name)}</span>
+          <span class="mix-value">${Math.round(pct(row.actual, total) * 100)}% · ${compact.format(row.actual)}</span>
+        </div>
+      `).join("") || `<div class="hint">ยังไม่มี actual revenue</div>`;
+    }
+
+    function renderCollectionFunnel() {
+      const t = totals();
+      const max = Math.max(t.revenuePlan, t.revenueActual, t.cash, t.profitActual, 1);
+      const stages = [
+        ["Planned", t.revenuePlan, "#7d8797", "เป้ารายได้"],
+        ["Actual", t.revenueActual, "#2364aa", "เกิดรายได้แล้ว"],
+        ["Cash", t.cash, "#0f766e", "เงินเข้าจริง"],
+        ["Profit", t.profitActual, "#13795b", "กำไรตามข้อมูล"]
+      ];
+      document.getElementById("collectionFunnel").innerHTML = stages.map(([label, value, color, note]) => {
+        const inset = Math.round((1 - Math.min(1, value / max)) * 52);
+        return `
+          <div class="funnel-stage" style="--inset:${inset}px; --tone:${color}">
+            <div><strong>${label}</strong><span>${note}</span></div>
+            <b>${compact.format(value)}</b>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderBubbleChart() {
+      const rows = projects.filter(project => project.revenuePlan > 0 || project.revenueActual > 0);
+      const width = 760;
+      const height = 320;
+      const left = 58;
+      const right = 24;
+      const top = 26;
+      const bottom = 50;
+      const plotW = width - left - right;
+      const plotH = height - top - bottom;
+      const maxValue = Math.max(...rows.map(row => Math.max(row.revenuePlan, row.revenueActual)), 1);
+      const xFor = project => {
+        const value = project.revenuePlan ? project.revenueActual / project.revenuePlan : project.revenueActual ? 1.2 : 0;
+        return left + Math.min(1.2, Math.max(0, value)) / 1.2 * plotW;
+      };
+      const yFor = project => {
+        const value = project.revenueActual ? project.cash / project.revenueActual : 0;
+        return top + (1 - Math.min(1.15, Math.max(0, value)) / 1.15) * plotH;
+      };
+      const circles = rows.map(project => {
+        const value = Math.max(project.revenuePlan, project.revenueActual);
+        const radius = 5 + Math.sqrt(value / maxValue) * 24;
+        const label = `${project.name}: actual ${money.format(project.revenueActual)}, cash ${money.format(project.cash)}`;
+        return `
+          <circle cx="${xFor(project).toFixed(1)}" cy="${yFor(project).toFixed(1)}" r="${radius.toFixed(1)}" fill="${statusColors[project.status] || "#667085"}" fill-opacity="0.68" stroke="#fff" stroke-width="2">
+            <title>${esc(label)}</title>
+          </circle>
+        `;
+      }).join("");
+      const topLabels = [...rows]
+        .sort((a, b) => Math.max(b.revenuePlan, b.revenueActual) - Math.max(a.revenuePlan, a.revenueActual))
+        .slice(0, 5)
+        .map(project => `
+          <text x="${xFor(project).toFixed(1)}" y="${(yFor(project) - 14).toFixed(1)}" text-anchor="middle" class="chart-note">${esc(project.name).slice(0, 18)}</text>
+        `).join("");
+      document.getElementById("bubbleChart").innerHTML = `
+        <svg class="bubble-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Project bubble risk map">
+          <rect x="${left}" y="${top}" width="${plotW}" height="${plotH}" rx="8" fill="#f2f5fa"></rect>
+          <line x1="${left}" y1="${top + plotH}" x2="${left + plotW}" y2="${top + plotH}" stroke="#bac4d3"></line>
+          <line x1="${left}" y1="${top}" x2="${left}" y2="${top + plotH}" stroke="#bac4d3"></line>
+          <line x1="${left + plotW * (1 / 1.2)}" y1="${top}" x2="${left + plotW * (1 / 1.2)}" y2="${top + plotH}" stroke="#13795b" stroke-dasharray="5 5"></line>
+          <line x1="${left}" y1="${top + plotH * (1 - 1 / 1.15)}" x2="${left + plotW}" y2="${top + plotH * (1 - 1 / 1.15)}" stroke="#13795b" stroke-dasharray="5 5"></line>
+          ${[0, 0.5, 1, 1.2].map(v => `<text x="${left + (v / 1.2) * plotW}" y="${height - 20}" text-anchor="middle" class="axis-label">${Math.round(v * 100)}%</text>`).join("")}
+          ${[0, 0.5, 1].map(v => `<text x="44" y="${top + (1 - v / 1.15) * plotH + 4}" text-anchor="end" class="axis-label">${Math.round(v * 100)}%</text>`).join("")}
+          <text x="${left + plotW / 2}" y="${height - 2}" text-anchor="middle" class="chart-note">Actual revenue / planned revenue</text>
+          <text x="16" y="${top + plotH / 2}" text-anchor="middle" class="chart-note" transform="rotate(-90 16 ${top + plotH / 2})">Cash / actual revenue</text>
+          ${circles}
+          ${topLabels}
+        </svg>
+        <div class="legend">
+          ${statuses.map(status => `<span><i style="background:${statusColors[status]}"></i>${status}</span>`).join("")}
+        </div>
+      `;
+    }
+
+    function renderMoneyFlow() {
+      const t = totals();
+      const max = Math.max(t.revenuePlan, t.revenueActual, t.cash, t.profitActual, 1);
+      const flow = [
+        ["Planned Revenue", t.revenuePlan, "แผนรายได้ทั้งหมด", "plan"],
+        ["Actual Revenue", t.revenueActual, "เกิดรายได้แล้ว", "actual"],
+        ["Cash Received", t.cash, "เงินเข้าจริง", "cash"],
+        ["Profit Actual", t.profitActual, "กำไรตามข้อมูล", "profit"]
+      ];
+      document.getElementById("moneyFlow").innerHTML = flow.map(([label, value, detail, type]) => `
+        <div class="flow-step">
+          <div class="label">${label}</div>
+          <div class="amount">${money.format(value)}</div>
+          <div class="meter ${type}"><span style="width:${safeWidth(value / max)}"></span></div>
+          <div class="hint">${detail}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderBusinessChart() {
+      const grouped = groupBy("category");
+      const rows = Object.entries(grouped).map(([name, items]) => ({
+        name,
+        plan: sum("revenuePlan", items),
+        actual: sum("revenueActual", items)
+      })).sort((a, b) => b.plan - a.plan);
+      const max = Math.max(...rows.flatMap(row => [row.plan, row.actual]), 1);
+      document.getElementById("businessChart").innerHTML = rows.map(row => `
+        <div class="bar-row">
+          <div class="bar-name" title="${row.name}">${row.name}</div>
+          <div class="bar-stack">
+            <div class="bar-line plan"><span style="width:${safeWidth(row.plan / max)}"></span></div>
+            <div class="bar-line actual"><span style="width:${safeWidth(row.actual / max)}"></span></div>
+          </div>
+          <div class="bar-value">${compact.format(row.actual)}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderStatusBars() {
+      const grouped = groupBy("status");
+      const rows = statuses.map(status => {
+        const items = grouped[status] || [];
+        return { status, count: items.length, actual: sum("revenueActual", items) };
+      });
+      const max = Math.max(...rows.map(row => row.actual), 1);
+      document.getElementById("statusBars").innerHTML = rows.map(row => `
+        <div class="status-row">
+          <strong>${row.status}</strong>
+          <span class="count">${row.count}</span>
+          <div class="mini-bar"><span style="width:${safeWidth(row.actual / max)}"></span></div>
+          <span class="bar-value">${compact.format(row.actual)}</span>
+        </div>
+      `).join("");
+
+      const t = totals();
+      const largest = projects.reduce((best, row) => row.revenueActual > (best?.revenueActual || 0) ? row : best, null);
+      const share = largest && t.revenueActual ? largest.revenueActual / t.revenueActual : 0;
+      document.getElementById("concentration").innerHTML = `
+        <div>
+          <strong>รายได้กระจุกตัวที่ ${largest ? largest.name : "-"}</strong>
+          <span class="hint">${largest ? money.format(largest.revenueActual) : money.format(0)} จาก actual revenue ทั้งหมด</span>
+        </div>
+        <div class="big">${Math.round(share * 100)}%</div>
+      `;
+    }
+
+    function renderWatchlist() {
+      const rows = warningRows();
+      const tbody = document.getElementById("watchList");
+      const empty = document.getElementById("watchEmpty");
+      empty.hidden = rows.length > 0;
+      tbody.innerHTML = rows.map(({ project, priority, issue, amount }) => `
+        <tr>
+          <td><div class="project-name">${project.name}</div><div class="hint">${project.category} ${project.code ? "· " + project.code : ""}</div></td>
+          <td>${project.status}</td>
+          <td><span class="tag ${riskTag(priority)}">${priority}</span> ${money.format(amount)}</td>
+          <td>${issue}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderQuality() {
+      const q = qualitySummary();
+      const score = document.getElementById("qualityScore");
+      score.style.setProperty("--score", `${q.score}%`);
+      score.querySelector("span").textContent = q.score;
+      document.getElementById("qualityList").innerHTML = [
+        `${q.missingCash} projects มีรายได้แล้วแต่ cash ยังไม่เข้า`,
+        `${q.missingCost} projects มีรายได้แล้วแต่ cost actual ยังเป็นศูนย์`,
+        `${money.format(q.blockedValue)} planned revenue อยู่ในงาน Blocked`
+      ].map(text => `<div>${text}</div>`).join("");
+    }
+
+    function renderInputRows() {
+      document.getElementById("inputRows").innerHTML = projects.map((project, index) => `
+        <tr>
+          <td>${project.category}</td>
+          <td>${project.code || "-"}</td>
+          <td><input value="${project.name.replaceAll('"', "&quot;")}" data-index="${index}" data-key="name"></td>
+          <td>
+            <select data-index="${index}" data-key="status">
+              ${statuses.map(status => `<option value="${status}" ${project.status === status ? "selected" : ""}>${status}</option>`).join("")}
+            </select>
+          </td>
+          <td><input type="number" step="1000" value="${project.revenuePlan}" data-index="${index}" data-key="revenuePlan"></td>
+          <td><input type="number" step="1000" value="${project.revenueActual}" data-index="${index}" data-key="revenueActual"></td>
+          <td><input type="number" step="1000" value="${project.cash}" data-index="${index}" data-key="cash"></td>
+          <td><input type="number" step="1000" value="${project.costActual}" data-index="${index}" data-key="costActual"></td>
+          <td><input type="number" step="1000" value="${project.profitActual}" data-index="${index}" data-key="profitActual"></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderDashboard() {
+      renderStatusStrip();
+      renderKpis();
+      renderWaterfall();
+      renderStoryStrip();
+      renderTopProjects();
+      renderMixDonut();
+      renderCollectionFunnel();
+      renderBubbleChart();
+      renderMoneyFlow();
+      renderBusinessChart();
+      renderStatusBars();
+      renderWatchlist();
+      renderQuality();
+    }
+
+    document.getElementById("inputRows").addEventListener("input", event => {
+      const target = event.target;
+      const index = Number(target.dataset.index);
+      const key = target.dataset.key;
+      if (!key || Number.isNaN(index)) return;
+      const numericKeys = ["revenuePlan", "revenueActual", "cash", "costActual", "profitActual"];
+      projects[index][key] = numericKeys.includes(key) ? Number(target.value || 0) : target.value;
+      renderDashboard();
+    });
+
+    document.getElementById("inputRows").addEventListener("change", event => {
+      const target = event.target;
+      const index = Number(target.dataset.index);
+      const key = target.dataset.key;
+      if (!key || Number.isNaN(index)) return;
+      projects[index][key] = target.value;
+      renderDashboard();
+    });
+
+    document.getElementById("resetData").addEventListener("click", () => {
+      projects = structuredClone(seedProjects);
+      renderInputRows();
+      renderDashboard();
+    });
+
+    document.getElementById("focusInput").addEventListener("click", () => {
+      document.getElementById("inputSection").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    renderInputRows();
+    renderDashboard();
+  </script>
+</body>
+</html>
