@@ -3,6 +3,9 @@ const state = {
   baseProjects: [],
   sourceLabel: "Local project data",
   refreshTimer: null,
+  pendingRender: null,
+  hasSavedProjectEdits: false,
+  lastSavedAt: null,
   filters: {
     search: "",
     unit: "All",
@@ -25,6 +28,16 @@ const statusColors = {
 };
 const severityRank = { critical: 4, high: 3, medium: 2, info: 1, low: 0 };
 const severityLabel = { critical: "Critical", high: "High", medium: "Medium", info: "Info", low: "Low" };
+const PROJECT_STORAGE_KEY = "financeDashboardProjectsV1";
+const editableNumericFields = new Set([
+  "revenuePlan",
+  "revenueActual",
+  "cashReceived",
+  "costPlan",
+  "costActual",
+  "profitPlan",
+  "profitActual"
+]);
 const statusClassMap = {
   "Done": "done",
   "In Progress": "progress",
@@ -87,6 +100,54 @@ function loadTextEdits() {
 
 function saveTextEdits() {
   localStorage.setItem("financeDashboardTextEdits", JSON.stringify(state.textEdits));
+}
+
+function formatSavedTime(isoText) {
+  if (!isoText) return "";
+  const date = new Date(isoText);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("th-TH");
+}
+
+function updateSaveStatus(message, tone = "neutral") {
+  const node = $("saveStatus");
+  if (!node) return;
+  node.className = tone;
+  node.textContent = message;
+}
+
+function loadSavedProjectEdits() {
+  try {
+    const payload = JSON.parse(localStorage.getItem(PROJECT_STORAGE_KEY) || "null");
+    if (!payload || !Array.isArray(payload.projects)) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function saveProjectEdits(message = "Saved locally") {
+  const savedAt = new Date().toISOString();
+  const payload = {
+    savedAt,
+    sourceLabel: state.sourceLabel,
+    projects: state.projects
+  };
+  try {
+    localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(payload));
+    state.hasSavedProjectEdits = true;
+    state.lastSavedAt = savedAt;
+    updateSaveStatus(`${message} · ${formatSavedTime(savedAt)}`, "saved");
+  } catch (error) {
+    updateSaveStatus(`Save failed: ${error.message}`, "error");
+  }
+}
+
+function clearSavedProjectEdits() {
+  localStorage.removeItem(PROJECT_STORAGE_KEY);
+  state.hasSavedProjectEdits = false;
+  state.lastSavedAt = null;
+  updateSaveStatus("Saved edits cleared", "neutral");
 }
 
 function updateEditableTextNodes() {
@@ -203,8 +264,7 @@ function cloneProjects(projects) {
 function isEmptyProject(project) {
   const nameBlank = !project.projectName || project.projectName === "(ยังไม่ระบุชื่อ)";
   return Boolean(
-    project.isPlaceholder ||
-    (nameBlank &&
+    nameBlank &&
       !project.projectCode &&
       !project.revenuePlan &&
       !project.revenueActual &&
@@ -212,7 +272,7 @@ function isEmptyProject(project) {
       !project.costPlan &&
       !project.costActual &&
       !project.profitPlan &&
-      !project.profitActual)
+      !project.profitActual
   );
 }
 
@@ -838,12 +898,14 @@ function renderInput(rows) {
         <td><input type="number" step="1000" value="${project.revenuePlan}" data-index="${index}" data-field="revenuePlan"></td>
         <td><input type="number" step="1000" value="${project.revenueActual}" data-index="${index}" data-field="revenueActual"></td>
         <td><input type="number" step="1000" value="${project.cashReceived}" data-index="${index}" data-field="cashReceived"></td>
+        <td><input type="number" step="1000" value="${project.costPlan}" data-index="${index}" data-field="costPlan"></td>
         <td><input type="number" step="1000" value="${project.costActual}" data-index="${index}" data-field="costActual"></td>
+        <td><input type="number" step="1000" value="${project.profitPlan}" data-index="${index}" data-field="profitPlan"></td>
         <td><input type="number" step="1000" value="${project.profitActual}" data-index="${index}" data-field="profitActual"></td>
         <td><span class="severity ${issueCount ? "high" : "low"}">${issueCount ? `${issueCount} issues` : "OK"}</span></td>
       </tr>
     `;
-  }).join("") || `<tr><td colspan="10"><div class="empty">ไม่มีรายการใน filter นี้</div></td></tr>`;
+  }).join("") || `<tr><td colspan="12"><div class="empty">ไม่มีรายการใน filter นี้</div></td></tr>`;
 }
 
 function renderAll() {
@@ -883,10 +945,20 @@ async function loadLocalData() {
   const response = await fetch("./data/projects.json", { cache: "no-store" });
   if (!response.ok) throw new Error(`Cannot load local data (${response.status})`);
   const payload = await response.json();
-  state.projects = cloneProjects(payload.projects);
   state.baseProjects = cloneProjects(payload.projects);
+  const saved = loadSavedProjectEdits();
+  if (saved) {
+    state.projects = cloneProjects(saved.projects);
+    state.hasSavedProjectEdits = true;
+    state.lastSavedAt = saved.savedAt;
+    updateSourceUi("Local project data + saved edits");
+    updateSaveStatus(`Using saved edits · ${formatSavedTime(saved.savedAt)}`, "saved");
+  } else {
+    state.projects = cloneProjects(payload.projects);
+    updateSourceUi("Local project data");
+    updateSaveStatus("No saved edits yet", "neutral");
+  }
   renderFilterOptions();
-  updateSourceUi("Local project data");
   renderAll();
 }
 
@@ -902,7 +974,34 @@ async function loadCsvUrl() {
   state.baseProjects = cloneProjects(projects);
   renderFilterOptions();
   updateSourceUi("Google Sheet CSV");
+  saveProjectEdits("CSV synced and saved locally");
   renderAll();
+}
+
+function scheduleRenderAll() {
+  if (state.pendingRender) clearTimeout(state.pendingRender);
+  state.pendingRender = setTimeout(() => {
+    state.pendingRender = null;
+    renderAll();
+  }, 260);
+}
+
+function flushScheduledRender() {
+  if (state.pendingRender) {
+    clearTimeout(state.pendingRender);
+    state.pendingRender = null;
+  }
+  renderAll();
+}
+
+function updateProjectFromControl(target) {
+  const index = Number(target.dataset.index);
+  const field = target.dataset.field;
+  if (!field || Number.isNaN(index) || !state.projects[index]) return false;
+  state.projects[index][field] = editableNumericFields.has(field) ? Number(target.value || 0) : target.value;
+  state.projects[index].isPlaceholder = isEmptyProject(state.projects[index]);
+  saveProjectEdits("Saved locally");
+  return true;
 }
 
 function setAutoRefresh() {
@@ -993,22 +1092,10 @@ function bindEvents() {
     renderAll();
   });
   $("inputRows").addEventListener("input", event => {
-    const target = event.target;
-    const index = Number(target.dataset.index);
-    const field = target.dataset.field;
-    if (!field || Number.isNaN(index) || !state.projects[index]) return;
-    const numericFields = new Set(["revenuePlan", "revenueActual", "cashReceived", "costActual", "profitActual"]);
-    state.projects[index][field] = numericFields.has(field) ? Number(target.value || 0) : target.value;
-    state.projects[index].isPlaceholder = isEmptyProject(state.projects[index]);
-    renderAll();
+    if (updateProjectFromControl(event.target)) scheduleRenderAll();
   });
   $("inputRows").addEventListener("change", event => {
-    const target = event.target;
-    const index = Number(target.dataset.index);
-    const field = target.dataset.field;
-    if (!field || Number.isNaN(index) || !state.projects[index]) return;
-    state.projects[index][field] = target.value;
-    renderAll();
+    if (updateProjectFromControl(event.target)) flushScheduledRender();
   });
   $("jumpInput").addEventListener("click", () => {
     switchTab("projects");
@@ -1020,6 +1107,7 @@ function bindEvents() {
   });
   $("resetData").addEventListener("click", () => {
     state.projects = cloneProjects(state.baseProjects);
+    clearSavedProjectEdits();
     renderAll();
   });
   $("loadSheet").addEventListener("click", () => {
