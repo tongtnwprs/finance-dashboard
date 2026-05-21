@@ -9,7 +9,8 @@ const state = {
     status: "All",
     hideEmpty: true,
     issueOnly: false
-  }
+  },
+  activeTab: "overview"
 };
 
 const statuses = ["Done", "In Progress", "Blocked", "Not Start"];
@@ -22,6 +23,12 @@ const statusColors = {
 };
 const severityRank = { critical: 4, high: 3, medium: 2, info: 1, low: 0 };
 const severityLabel = { critical: "Critical", high: "High", medium: "Medium", info: "Info", low: "Low" };
+const statusClassMap = {
+  "Done": "done",
+  "In Progress": "progress",
+  "Blocked": "blocked",
+  "Not Start": "not-start"
+};
 
 const money = new Intl.NumberFormat("th-TH", {
   style: "currency",
@@ -47,6 +54,11 @@ const sum = (rows, key) => rows.reduce((total, row) => total + Number(row[key] |
 const pct = (num, den) => den ? num / den : 0;
 const safeWidth = value => `${Math.max(2, Math.min(100, value * 100))}%`;
 const formatPct = value => `${Math.round((value || 0) * 100)}%`;
+const statusClass = status => statusClassMap[status] || "system";
+const issueTone = issues => {
+  const top = issues.reduce((current, issue) => severityRank[issue.severity] > severityRank[current] ? issue.severity : current, "low");
+  return top;
+};
 
 function toNumber(value, percent = false) {
   const text = clean(value);
@@ -346,22 +358,126 @@ function renderFilterOptions() {
   $("statusFilter").innerHTML = [`<option value="All">All status</option>`, ...statuses.map(status => `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`)].join("");
 }
 
+function renderFilterSummary(rows) {
+  const labels = [];
+  if (state.filters.search) labels.push(`Search: ${state.filters.search}`);
+  if (state.filters.unit !== "All") labels.push(`Unit: ${state.filters.unit}`);
+  if (state.filters.status !== "All") labels.push(`Status: ${state.filters.status}`);
+  if (state.filters.hideEmpty) labels.push("Hide blank rows");
+  if (state.filters.issueOnly) labels.push("Issue-only");
+  $("filterSummary").textContent = `${rows.length} visible projects`;
+  $("filterChips").innerHTML = (labels.length ? labels : ["All projects"]).map(label => `<span class="chip">${escapeHtml(label)}</span>`).join("");
+}
+
 function renderHealth(rows, validation) {
   const t = totals(rows);
   const cards = [
-    ["Revenue actual", money.format(t.revenueActual), `${formatPct(t.revenueProgress)} ของแผน`, t.revenueProgress >= 0.9 ? "good" : t.revenueProgress >= 0.7 ? "warn" : "bad"],
-    ["Revenue gap", money.format(Math.abs(t.revenueGap)), t.revenueGap >= 0 ? "เกินแผน" : "ต่ำกว่าแผน", t.revenueGap >= 0 ? "good" : "bad"],
-    ["Cash received", money.format(t.cashReceived), `${formatPct(t.cashCoverage)} ของ actual`, t.cashCoverage >= 0.9 ? "good" : t.cashCoverage >= 0.7 ? "warn" : "bad"],
-    ["Reported profit", money.format(t.profitActual), `margin ${formatPct(t.reportedMargin)}`, Math.abs(t.profitGap) <= 1 ? "good" : "bad"],
-    ["Data quality", `${validation.score}/100`, `${validation.issues.length} issues`, validation.score >= 85 ? "good" : validation.score >= 65 ? "warn" : "bad"]
+    ["Revenue actual", money.format(t.revenueActual), `${formatPct(t.revenueProgress)} ของแผน`, t.revenueProgress >= 0.9 ? "good" : t.revenueProgress >= 0.7 ? "warn" : "bad", "revenue"],
+    ["Revenue gap", money.format(Math.abs(t.revenueGap)), t.revenueGap >= 0 ? "เกินแผน" : "ต่ำกว่าแผน", t.revenueGap >= 0 ? "good" : "bad", "gap"],
+    ["Cash received", money.format(t.cashReceived), `${formatPct(t.cashCoverage)} ของ actual`, t.cashCoverage >= 0.9 ? "good" : t.cashCoverage >= 0.7 ? "warn" : "bad", "cash"],
+    ["Reported profit", money.format(t.profitActual), `margin ${formatPct(t.reportedMargin)}`, Math.abs(t.profitGap) <= 1 ? "good" : "bad", "profit"],
+    ["Data quality", `${validation.score}/100`, `${validation.issues.length} issues`, validation.score >= 85 ? "good" : validation.score >= 65 ? "warn" : "bad", "quality"]
   ];
-  $("healthGrid").innerHTML = cards.map(([label, value, detail, tone]) => `
-    <article class="health-card">
+  $("healthGrid").innerHTML = cards.map(([label, value, detail, tone, accent]) => `
+    <article class="health-card accent-${accent}">
       <label>${label}</label>
       <strong>${value}</strong>
       <span class="delta ${tone}">${detail}</span>
     </article>
   `).join("");
+}
+
+function renderGoalFocus(rows) {
+  const t = totals(rows);
+  const progress = Math.max(0, Math.min(1.2, t.revenueProgress));
+  const gap = Math.max(0, t.revenuePlan - t.revenueActual);
+  const over = Math.max(0, t.revenueActual - t.revenuePlan);
+  const remainingPct = Math.max(0, 1 - Math.min(1, t.revenueProgress));
+  const gapProjects = [...rows]
+    .map(project => ({
+      ...project,
+      gap: Math.max(0, (project.revenuePlan || 0) - (project.revenueActual || 0))
+    }))
+    .filter(project => project.gap > 0)
+    .sort((a, b) => b.gap - a.gap)
+    .slice(0, 6);
+  const maxGap = Math.max(...gapProjects.map(project => project.gap), 1);
+  const units = [...rows.reduce((map, project) => {
+    const item = map.get(project.businessUnit) || { name: project.businessUnit, plan: 0, actual: 0 };
+    item.plan += project.revenuePlan || 0;
+    item.actual += project.revenueActual || 0;
+    map.set(project.businessUnit, item);
+    return map;
+  }, new Map()).values()].sort((a, b) => (b.plan - b.actual) - (a.plan - a.actual)).slice(0, 4);
+  const unitMax = Math.max(...units.map(unit => Math.max(unit.plan, unit.actual)), 1);
+
+  $("goalGapBadge").className = `pill ${gap ? "bad" : "good"}`;
+  $("goalGapBadge").textContent = gap ? `ต้องเติม ${money.format(gap)}` : `เกินเป้า ${money.format(over)}`;
+  $("goalFocus").innerHTML = `
+    <div class="goal-layout">
+      <div class="goal-hero">
+        <div class="goal-ring" style="--goal-progress:${Math.min(100, progress * 100)}%">
+          <div>
+            <strong>${formatPct(t.revenueProgress)}</strong>
+            <span>ของเป้ารายได้</span>
+          </div>
+        </div>
+        <div class="goal-copy">
+          <span class="goal-kicker">Revenue Goal</span>
+          <h3>${money.format(t.revenuePlan)}</h3>
+          <p>ทำได้แล้ว <b>${money.format(t.revenueActual)}</b> เหลืออีก <b>${money.format(gap)}</b> หรือ ${formatPct(remainingPct)} ของเป้า</p>
+          <div class="goal-meter">
+            <span class="actual" style="width:${safeWidth(Math.min(1, t.revenueProgress))}"></span>
+            <span class="gap" style="width:${safeWidth(remainingPct)}"></span>
+          </div>
+          <div class="goal-scale">
+            <span>Actual ${compact.format(t.revenueActual)}</span>
+            <span>Goal ${compact.format(t.revenuePlan)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="goal-side">
+        <div>
+          <h3>ต้องเติมจากตรงไหนก่อน</h3>
+          <p class="muted">เรียงจาก gap ระหว่าง planned revenue กับ actual revenue</p>
+        </div>
+        <div class="gap-list">
+          ${gapProjects.map(project => `
+            <div class="gap-row">
+              <div class="gap-name">
+                <b>${escapeHtml(project.projectName)}</b>
+                <span>${escapeHtml(project.businessUnit)} · ${escapeHtml(project.status)}</span>
+              </div>
+              <div class="gap-track">
+                <span style="width:${safeWidth(project.gap / maxGap)}"></span>
+              </div>
+              <strong>${compact.format(project.gap)}</strong>
+            </div>
+          `).join("") || `<div class="empty">ไม่มี revenue gap ใน filter นี้</div>`}
+        </div>
+      </div>
+    </div>
+
+    <div class="unit-goal-grid">
+      ${units.map(unit => {
+        const unitGap = Math.max(0, unit.plan - unit.actual);
+        return `
+          <div class="unit-goal-card">
+            <div>
+              <b>${escapeHtml(unit.name)}</b>
+              <span>${formatPct(pct(unit.actual, unit.plan))} ของเป้า</span>
+            </div>
+            <div class="unit-bars">
+              <div class="unit-bar plan"><span style="width:${safeWidth(unit.plan / unitMax)}"></span></div>
+              <div class="unit-bar actual"><span style="width:${safeWidth(unit.actual / unitMax)}"></span></div>
+            </div>
+            <strong>${unitGap ? `เติม ${compact.format(unitGap)}` : "ถึงเป้าแล้ว"}</strong>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 function renderWaterfall(rows) {
@@ -526,15 +642,51 @@ function renderValidation(rows, validation) {
     [money.format(t.profitGap), "reported profit ต่างจาก recomputed profit"],
     [`${rows.length} rows`, "จำนวนรายการที่อยู่ใน filter ปัจจุบัน"]
   ].map(([title, detail]) => `<div class="summary-item"><span class="severity ${critical ? "critical" : "info"}">${escapeHtml(title)}</span><div><b>${escapeHtml(detail)}</b><span>อัปเดตตาม filter และ input/edit ทันที</span></div></div>`).join("");
-  const rowsHtml = validation.issues.slice(0, 40).map(issue => `
-    <tr>
-      <td><span class="severity ${issue.severity}">${severityLabel[issue.severity]}</span></td>
-      <td><div class="project-title">${escapeHtml(issue.project.projectName)}</div><div class="project-sub">${escapeHtml(issue.project.businessUnit)} ${issue.sourceRow ? `· row ${issue.sourceRow}` : ""}</div></td>
-      <td>${escapeHtml(issue.title)}<div class="project-sub">${escapeHtml(issue.detail)}</div></td>
-      <td>${issue.impact ? money.format(issue.impact) : "-"}</td>
-    </tr>
-  `).join("");
-  $("validationRows").innerHTML = rowsHtml || `<tr><td colspan="4"><div class="empty">ไม่พบ validation issue ใน filter นี้</div></td></tr>`;
+  const grouped = new Map();
+  validation.issues.forEach(issue => {
+    const project = issue.project;
+    const key = `${project.sourceRow || "global"}|${project.projectCode || ""}|${project.projectName}`;
+    if (!grouped.has(key)) {
+      grouped.set(key, { project, issues: [] });
+    }
+    grouped.get(key).issues.push(issue);
+  });
+  const cards = [...grouped.values()]
+    .sort((a, b) => severityRank[issueTone(b.issues)] - severityRank[issueTone(a.issues)] || b.issues.length - a.issues.length)
+    .slice(0, 24)
+    .map(group => {
+      const project = group.project;
+      const topSeverity = issueTone(group.issues);
+      const impact = group.issues.reduce((total, issue) => total + Math.abs(issue.impact || 0), 0);
+      const status = project.status || "System";
+      const issueRows = group.issues.slice(0, 8).map(issue => `
+        <div class="validation-issue">
+          <span class="severity ${issue.severity}">${severityLabel[issue.severity]}</span>
+          <div>
+            <b>${escapeHtml(issue.title)}</b>
+            <p>${escapeHtml(issue.detail)}</p>
+          </div>
+          <strong>${issue.impact ? money.format(issue.impact) : "-"}</strong>
+        </div>
+      `).join("");
+      return `
+        <article class="validation-project severity-card-${topSeverity}">
+          <header class="validation-project-head">
+            <div>
+              <div class="project-title">${escapeHtml(project.projectName)}</div>
+              <div class="project-sub">${escapeHtml(project.businessUnit || "Global")} ${project.projectCode ? `· ${escapeHtml(project.projectCode)}` : ""} ${project.sourceRow ? `· row ${project.sourceRow}` : ""}</div>
+            </div>
+            <div class="validation-badges">
+              <span class="status-badge status-${statusClass(status)}">${escapeHtml(status)}</span>
+              <span class="severity ${topSeverity}">${group.issues.length} issues</span>
+              <span class="impact-badge">${impact ? money.format(impact) : "Formula"}</span>
+            </div>
+          </header>
+          <div class="validation-issue-list">${issueRows}</div>
+        </article>
+      `;
+    }).join("");
+  $("validationProjectGroups").innerHTML = cards || `<div class="empty">ไม่พบ validation issue ใน filter นี้</div>`;
 }
 
 function renderWatchlist(validation) {
@@ -545,6 +697,7 @@ function renderWatchlist(validation) {
       <article class="watch-card">
         <div class="watch-meta">
           <span class="severity ${issue.severity}">${severityLabel[issue.severity]}</span>
+          <span class="status-badge status-${statusClass(issue.project.status || "System")}">${escapeHtml(issue.project.status || "System")}</span>
           <span>${issue.impact ? money.format(issue.impact) : "Formula"}</span>
         </div>
         <div>
@@ -570,6 +723,7 @@ function renderInput(rows) {
           <select data-index="${index}" data-field="status">
             ${statuses.map(status => `<option value="${escapeHtml(status)}" ${project.status === status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}
           </select>
+          <div class="input-status"><span class="status-badge status-${statusClass(project.status)}">${escapeHtml(project.status)}</span></div>
         </td>
         <td><input type="number" step="1000" value="${project.revenuePlan}" data-index="${index}" data-field="revenuePlan"></td>
         <td><input type="number" step="1000" value="${project.revenueActual}" data-index="${index}" data-field="revenueActual"></td>
@@ -585,6 +739,8 @@ function renderInput(rows) {
 function renderAll() {
   const rows = visibleProjects();
   const validation = validationPackage(rows);
+  renderFilterSummary(rows);
+  renderGoalFocus(rows);
   renderHealth(rows, validation);
   renderWaterfall(rows);
   renderMix(rows);
@@ -593,6 +749,18 @@ function renderAll() {
   renderValidation(rows, validation);
   renderWatchlist(validation);
   renderInput(rows);
+}
+
+function switchTab(tabName) {
+  state.activeTab = tabName;
+  document.querySelectorAll(".tab-btn").forEach(button => {
+    const active = button.dataset.tab === tabName;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  document.querySelectorAll(".tab-panel").forEach(panel => {
+    panel.classList.toggle("active", panel.dataset.panel === tabName);
+  });
 }
 
 function updateSourceUi(label) {
@@ -657,6 +825,25 @@ function exportJson() {
 }
 
 function bindEvents() {
+  document.querySelectorAll(".tab-btn").forEach(button => {
+    button.addEventListener("click", () => switchTab(button.dataset.tab));
+  });
+  document.querySelectorAll(".collapse-btn").forEach(button => {
+    button.addEventListener("click", () => {
+      const target = $(button.dataset.collapseTarget);
+      if (!target) return;
+      target.classList.toggle("collapsed");
+      const expanded = !target.classList.contains("collapsed");
+      button.setAttribute("aria-expanded", String(expanded));
+      button.textContent = expanded ? "Minimize" : "Expand";
+    });
+  });
+  $("toggleFilters").addEventListener("click", () => {
+    $("filterShell").classList.toggle("compact");
+    const expanded = !$("filterShell").classList.contains("compact");
+    $("toggleFilters").setAttribute("aria-expanded", String(expanded));
+    $("toggleFilters").textContent = expanded ? "Minimize" : "Expand";
+  });
   $("searchBox").addEventListener("input", event => {
     state.filters.search = event.target.value;
     renderAll();
@@ -695,8 +882,14 @@ function bindEvents() {
     state.projects[index][field] = target.value;
     renderAll();
   });
-  $("jumpInput").addEventListener("click", () => $("inputSection").scrollIntoView({ behavior: "smooth", block: "start" }));
-  $("jumpValidation").addEventListener("click", () => $("validationSection").scrollIntoView({ behavior: "smooth", block: "start" }));
+  $("jumpInput").addEventListener("click", () => {
+    switchTab("projects");
+    $("inputSection").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  $("jumpValidation").addEventListener("click", () => {
+    switchTab("validation");
+    $("validationSection").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   $("resetData").addEventListener("click", () => {
     state.projects = cloneProjects(state.baseProjects);
     renderAll();
@@ -711,6 +904,7 @@ function bindEvents() {
 }
 
 bindEvents();
+switchTab("overview");
 loadLocalData().catch(error => {
   $("lastUpdated").textContent = error.message;
 });
