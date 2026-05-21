@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Finance 2026 Interactive Dashboard</title>
-  <link rel="stylesheet" href="./assets/styles.css?v=5">
+  <link rel="stylesheet" href="./assets/styles.css?v=6">
 </head>
 <body>
   <main class="shell">
@@ -81,10 +81,14 @@
       <section class="goal-focus panel">
         <div class="panel-head">
           <div>
-            <h2>Goal vs Actual</h2>
-            <p>ภาพเดียวสำหรับตอบว่า ทำได้แล้วเท่าไหร่ และต้องเติมอีกเท่าไหร่</p>
+            <h2 class="editable-text" data-text-key="goal.title">Goal vs Actual</h2>
+            <p class="editable-text" data-text-key="goal.subtitle">ภาพเดียวสำหรับตอบว่า ทำได้แล้วเท่าไหร่ และต้องเติมอีกเท่าไหร่</p>
           </div>
-          <span class="pill bad" id="goalGapBadge">Checking</span>
+          <div class="panel-actions">
+            <span class="pill bad" id="goalGapBadge">Checking</span>
+            <button class="icon-btn" id="toggleTextEdit">Edit text</button>
+            <button class="icon-btn" id="resetGoalText">Reset text</button>
+          </div>
         </div>
         <div id="goalFocus"></div>
       </section>
@@ -256,6 +260,6 @@
     </section>
   </main>
 
-  <script src="./assets/app.js?v=5"></script>
+  <script src="./assets/app.js?v=6"></script>
 </body>
 </html>

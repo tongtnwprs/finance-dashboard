@@ -10,7 +10,9 @@ const state = {
     hideEmpty: true,
     issueOnly: false
   },
-  activeTab: "overview"
+  activeTab: "overview",
+  textEditMode: false,
+  textEdits: {}
 };
 
 const statuses = ["Done", "In Progress", "Blocked", "Not Start"];
@@ -28,6 +30,19 @@ const statusClassMap = {
   "In Progress": "progress",
   "Blocked": "blocked",
   "Not Start": "not-start"
+};
+const textDefaults = {
+  "goal.title": "Goal vs Actual",
+  "goal.subtitle": "ภาพเดียวสำหรับตอบว่า ทำได้แล้วเท่าไหร่ และต้องเติมอีกเท่าไหร่",
+  "goal.revenue.title": "Revenue",
+  "goal.revenue.subtitle": "ยอดขายเทียบเป้า",
+  "goal.cost.title": "Cost",
+  "goal.cost.subtitle": "ต้นทุนเทียบงบ",
+  "goal.profit.title": "Profit",
+  "goal.profit.subtitle": "กำไรเทียบเป้า",
+  "goal.gap.title": "ต้องเติมจากตรงไหนก่อน",
+  "goal.gap.subtitle": "เรียงจาก revenue gap ระหว่าง planned revenue กับ actual revenue",
+  "goal.unit.title": "Progress by Business Unit"
 };
 
 const money = new Intl.NumberFormat("th-TH", {
@@ -59,6 +74,34 @@ const issueTone = issues => {
   const top = issues.reduce((current, issue) => severityRank[issue.severity] > severityRank[current] ? issue.severity : current, "low");
   return top;
 };
+const textValue = key => state.textEdits[key] || textDefaults[key] || "";
+const editable = (key, fallback, tag = "span", extraClass = "") => `<${tag} class="editable-text ${extraClass}" data-text-key="${key}" contenteditable="${state.textEditMode}">${escapeHtml(textValue(key) || fallback)}</${tag}>`;
+
+function loadTextEdits() {
+  try {
+    state.textEdits = JSON.parse(localStorage.getItem("financeDashboardTextEdits") || "{}");
+  } catch {
+    state.textEdits = {};
+  }
+}
+
+function saveTextEdits() {
+  localStorage.setItem("financeDashboardTextEdits", JSON.stringify(state.textEdits));
+}
+
+function updateEditableTextNodes() {
+  document.querySelectorAll("[data-text-key]").forEach(node => {
+    const key = node.dataset.textKey;
+    if (!state.textEditMode) {
+      node.textContent = textValue(key);
+    }
+    node.setAttribute("contenteditable", String(state.textEditMode));
+  });
+  document.body.classList.toggle("editing-text", state.textEditMode);
+  if ($("toggleTextEdit")) {
+    $("toggleTextEdit").textContent = state.textEditMode ? "Done editing" : "Edit text";
+  }
+}
 
 function toNumber(value, percent = false) {
   const text = clean(value);
@@ -389,10 +432,8 @@ function renderHealth(rows, validation) {
 
 function renderGoalFocus(rows) {
   const t = totals(rows);
-  const progress = Math.max(0, Math.min(1.2, t.revenueProgress));
-  const gap = Math.max(0, t.revenuePlan - t.revenueActual);
-  const over = Math.max(0, t.revenueActual - t.revenuePlan);
-  const remainingPct = Math.max(0, 1 - Math.min(1, t.revenueProgress));
+  const revenueGap = Math.max(0, t.revenuePlan - t.revenueActual);
+  const revenueOver = Math.max(0, t.revenueActual - t.revenuePlan);
   const gapProjects = [...rows]
     .map(project => ({
       ...project,
@@ -402,6 +443,86 @@ function renderGoalFocus(rows) {
     .sort((a, b) => b.gap - a.gap)
     .slice(0, 6);
   const maxGap = Math.max(...gapProjects.map(project => project.gap), 1);
+  const metrics = [
+    {
+      key: "revenue",
+      titleKey: "goal.revenue.title",
+      subtitleKey: "goal.revenue.subtitle",
+      goal: t.revenuePlan,
+      actual: t.revenueActual,
+      progress: pct(t.revenueActual, t.revenuePlan),
+      statusText: revenueGap ? `ต้องเติม ${money.format(revenueGap)}` : `เกินเป้า ${money.format(revenueOver)}`,
+      remainderText: revenueGap ? `เหลืออีก ${money.format(revenueGap)}` : `เกินเป้า ${money.format(revenueOver)}`,
+      tone: revenueGap ? "bad" : "good",
+      actualLabel: "Actual revenue",
+      goalLabel: "Revenue goal",
+      mode: "higher"
+    },
+    {
+      key: "cost",
+      titleKey: "goal.cost.title",
+      subtitleKey: "goal.cost.subtitle",
+      goal: t.revenuePlan ? sum(rows, "costPlan") : sum(rows, "costPlan"),
+      actual: t.costActual,
+      progress: pct(t.costActual, sum(rows, "costPlan")),
+      statusText: t.costActual > sum(rows, "costPlan") ? `เกินงบ ${money.format(t.costActual - sum(rows, "costPlan"))}` : `เหลืองบ ${money.format(Math.max(0, sum(rows, "costPlan") - t.costActual))}`,
+      remainderText: t.costActual > sum(rows, "costPlan") ? `เกินงบ ${money.format(t.costActual - sum(rows, "costPlan"))}` : `เหลืองบ ${money.format(Math.max(0, sum(rows, "costPlan") - t.costActual))}`,
+      tone: t.costActual > sum(rows, "costPlan") ? "bad" : "good",
+      actualLabel: "Actual cost",
+      goalLabel: "Cost budget",
+      mode: "lower"
+    },
+    {
+      key: "profit",
+      titleKey: "goal.profit.title",
+      subtitleKey: "goal.profit.subtitle",
+      goal: t.profitPlan,
+      actual: t.profitActual,
+      progress: pct(t.profitActual, t.profitPlan),
+      statusText: t.profitPlan > t.profitActual ? `ต้องเติม ${money.format(t.profitPlan - t.profitActual)}` : `เกินเป้า ${money.format(Math.max(0, t.profitActual - t.profitPlan))}`,
+      remainderText: t.profitPlan > t.profitActual ? `เหลืออีก ${money.format(t.profitPlan - t.profitActual)}` : `เกินเป้า ${money.format(Math.max(0, t.profitActual - t.profitPlan))}`,
+      tone: t.profitPlan > t.profitActual ? "bad" : "good",
+      actualLabel: "Actual profit",
+      goalLabel: "Profit goal",
+      mode: "higher"
+    }
+  ];
+  const primary = metrics[0];
+  const metricCard = metric => {
+    const progress = Math.max(0, Math.min(1.2, metric.progress || 0));
+    const gapPct = metric.mode === "higher"
+      ? Math.max(0, 1 - Math.min(1, progress))
+      : Math.max(0, 1 - Math.min(1, progress));
+    return `
+      <article class="goal-metric-card goal-metric-${metric.key}">
+        <div class="goal-metric-head">
+          <div>
+            ${editable(metric.titleKey, metric.key, "h3")}
+            ${editable(metric.subtitleKey, "", "p", "muted")}
+          </div>
+          <span class="pill ${metric.tone}">${metric.statusText}</span>
+        </div>
+        <div class="goal-metric-body">
+          <div class="mini-ring" style="--goal-progress:${Math.min(100, progress * 100)}%">
+            <div><strong>${formatPct(metric.progress)}</strong><span>Actual / Goal</span></div>
+          </div>
+          <div class="mini-goal-copy">
+            <b>${money.format(metric.goal)}</b>
+            <span>${metric.goalLabel}</span>
+            <p>ทำได้แล้ว <strong>${money.format(metric.actual)}</strong> · ${metric.remainderText}</p>
+          </div>
+        </div>
+        <div class="goal-meter ${metric.key}">
+          <span class="actual" style="width:${safeWidth(Math.min(1, progress))}"></span>
+          <span class="gap" style="width:${safeWidth(gapPct)}"></span>
+        </div>
+        <div class="goal-scale">
+          <span>${metric.actualLabel} ${compact.format(metric.actual)}</span>
+          <span>${metric.goalLabel} ${compact.format(metric.goal)}</span>
+        </div>
+      </article>
+    `;
+  };
   const units = [...rows.reduce((map, project) => {
     const item = map.get(project.businessUnit) || { name: project.businessUnit, plan: 0, actual: 0 };
     item.plan += project.revenuePlan || 0;
@@ -411,36 +532,18 @@ function renderGoalFocus(rows) {
   }, new Map()).values()].sort((a, b) => (b.plan - b.actual) - (a.plan - a.actual)).slice(0, 4);
   const unitMax = Math.max(...units.map(unit => Math.max(unit.plan, unit.actual)), 1);
 
-  $("goalGapBadge").className = `pill ${gap ? "bad" : "good"}`;
-  $("goalGapBadge").textContent = gap ? `ต้องเติม ${money.format(gap)}` : `เกินเป้า ${money.format(over)}`;
+  $("goalGapBadge").className = `pill ${revenueGap ? "bad" : "good"}`;
+  $("goalGapBadge").textContent = primary.statusText;
   $("goalFocus").innerHTML = `
-    <div class="goal-layout">
-      <div class="goal-hero">
-        <div class="goal-ring" style="--goal-progress:${Math.min(100, progress * 100)}%">
-          <div>
-            <strong>${formatPct(t.revenueProgress)}</strong>
-            <span>ของเป้ารายได้</span>
-          </div>
-        </div>
-        <div class="goal-copy">
-          <span class="goal-kicker">Revenue Goal</span>
-          <h3>${money.format(t.revenuePlan)}</h3>
-          <p>ทำได้แล้ว <b>${money.format(t.revenueActual)}</b> เหลืออีก <b>${money.format(gap)}</b> หรือ ${formatPct(remainingPct)} ของเป้า</p>
-          <div class="goal-meter">
-            <span class="actual" style="width:${safeWidth(Math.min(1, t.revenueProgress))}"></span>
-            <span class="gap" style="width:${safeWidth(remainingPct)}"></span>
-          </div>
-          <div class="goal-scale">
-            <span>Actual ${compact.format(t.revenueActual)}</span>
-            <span>Goal ${compact.format(t.revenuePlan)}</span>
-          </div>
-        </div>
-      </div>
+    <div class="goal-metrics-grid">
+      ${metrics.map(metricCard).join("")}
+    </div>
 
+    <div class="goal-layout">
       <div class="goal-side">
         <div>
-          <h3>ต้องเติมจากตรงไหนก่อน</h3>
-          <p class="muted">เรียงจาก gap ระหว่าง planned revenue กับ actual revenue</p>
+          ${editable("goal.gap.title", "ต้องเติมจากตรงไหนก่อน", "h3")}
+          ${editable("goal.gap.subtitle", "เรียงจาก revenue gap ระหว่าง planned revenue กับ actual revenue", "p", "muted")}
         </div>
         <div class="gap-list">
           ${gapProjects.map(project => `
@@ -457,27 +560,34 @@ function renderGoalFocus(rows) {
           `).join("") || `<div class="empty">ไม่มี revenue gap ใน filter นี้</div>`}
         </div>
       </div>
-    </div>
 
-    <div class="unit-goal-grid">
-      ${units.map(unit => {
-        const unitGap = Math.max(0, unit.plan - unit.actual);
-        return `
-          <div class="unit-goal-card">
-            <div>
-              <b>${escapeHtml(unit.name)}</b>
-              <span>${formatPct(pct(unit.actual, unit.plan))} ของเป้า</span>
-            </div>
-            <div class="unit-bars">
-              <div class="unit-bar plan"><span style="width:${safeWidth(unit.plan / unitMax)}"></span></div>
-              <div class="unit-bar actual"><span style="width:${safeWidth(unit.actual / unitMax)}"></span></div>
-            </div>
-            <strong>${unitGap ? `เติม ${compact.format(unitGap)}` : "ถึงเป้าแล้ว"}</strong>
-          </div>
-        `;
-      }).join("")}
+      <div class="goal-side unit-side">
+        <div>
+          ${editable("goal.unit.title", "Progress by Business Unit", "h3")}
+          <p class="muted">ใช้ Revenue goal เทียบ Actual revenue</p>
+        </div>
+        <div class="unit-goal-grid">
+          ${units.map(unit => {
+            const unitGap = Math.max(0, unit.plan - unit.actual);
+            return `
+              <div class="unit-goal-card">
+                <div>
+                  <b>${escapeHtml(unit.name)}</b>
+                  <span>${formatPct(pct(unit.actual, unit.plan))} ของเป้า</span>
+                </div>
+                <div class="unit-bars">
+                  <div class="unit-bar plan"><span style="width:${safeWidth(unit.plan / unitMax)}"></span></div>
+                  <div class="unit-bar actual"><span style="width:${safeWidth(unit.actual / unitMax)}"></span></div>
+                </div>
+                <strong>${unitGap ? `เติม ${compact.format(unitGap)}` : "ถึงเป้าแล้ว"}</strong>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
     </div>
   `;
+  updateEditableTextNodes();
 }
 
 function renderWaterfall(rows) {
@@ -825,6 +935,24 @@ function exportJson() {
 }
 
 function bindEvents() {
+  document.addEventListener("input", event => {
+    const target = event.target.closest("[data-text-key]");
+    if (!target || !state.textEditMode) return;
+    state.textEdits[target.dataset.textKey] = target.textContent.trim();
+    saveTextEdits();
+  });
+  $("toggleTextEdit").addEventListener("click", () => {
+    state.textEditMode = !state.textEditMode;
+    updateEditableTextNodes();
+  });
+  $("resetGoalText").addEventListener("click", () => {
+    Object.keys(textDefaults).forEach(key => {
+      delete state.textEdits[key];
+    });
+    saveTextEdits();
+    renderAll();
+    updateEditableTextNodes();
+  });
   document.querySelectorAll(".tab-btn").forEach(button => {
     button.addEventListener("click", () => switchTab(button.dataset.tab));
   });
@@ -904,6 +1032,7 @@ function bindEvents() {
 }
 
 bindEvents();
+loadTextEdits();
 switchTab("overview");
 loadLocalData().catch(error => {
   $("lastUpdated").textContent = error.message;
