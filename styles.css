@@ -146,6 +146,26 @@ h2 {
   font-size: 14px;
 }
 
+#saveStatus {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: #f1f5f9;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#saveStatus.saved {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+#saveStatus.error {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
 .source-controls input[type="url"],
 .filters input,
 .filters select {
@@ -1311,7 +1331,7 @@ table {
 }
 
 .input-table {
-  min-width: 1260px;
+  min-width: 1500px;
 }
 
 th,

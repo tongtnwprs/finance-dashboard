@@ -3,10 +3,266 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="0; url=./dashboard/">
-  <title>Finance Dashboard</title>
+  <title>Finance 2026 Interactive Dashboard</title>
+  <link rel="stylesheet" href="./assets/styles.css?v=8">
 </head>
 <body>
-  <a href="./dashboard/">Open Finance Dashboard</a>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Disrupt Finance · Project Database</p>
+        <h1>Finance 2026 Interactive Dashboard</h1>
+        <p class="sub">อ่านง่ายสำหรับ non-finance: เห็นรายได้ เงินเข้า กำไร ความเสี่ยง และคุณภาพข้อมูลจาก project database ชุดเดียว</p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn primary" id="jumpInput">Input / Edit</button>
+        <button class="btn" id="jumpValidation">Validation</button>
+      </div>
+    </header>
+
+    <section class="source-panel">
+      <div class="source-copy">
+        <strong id="sourceLabel">Local project data</strong>
+        <span id="lastUpdated">กำลังโหลดข้อมูล...</span>
+        <span id="saveStatus">Autosave ready</span>
+      </div>
+      <div class="source-controls">
+        <input id="sheetUrl" type="url" placeholder="วาง Google Sheet published CSV URL เพื่อ sync ข้อมูลจริง">
+        <label class="check">
+          <input id="autoRefresh" type="checkbox">
+          <span>Auto refresh</span>
+        </label>
+        <button class="btn" id="loadSheet">Load CSV</button>
+        <button class="btn" id="exportJson">Export JSON</button>
+        <button class="btn" id="resetData">Reset saved edits</button>
+      </div>
+    </section>
+
+    <section class="filter-shell" id="filterShell">
+      <div class="filter-head">
+        <div>
+          <h2>Filters</h2>
+          <p id="filterSummary">All projects</p>
+        </div>
+        <button class="icon-btn" id="toggleFilters" aria-expanded="true" aria-controls="filterBody">Minimize</button>
+      </div>
+      <div class="filters" id="filterBody">
+        <label>
+          <span>ค้นหา</span>
+          <input id="searchBox" type="search" placeholder="project, code, business unit">
+        </label>
+        <label>
+          <span>Business Unit</span>
+          <select id="unitFilter"></select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select id="statusFilter"></select>
+        </label>
+        <label class="check">
+          <input id="hideEmpty" type="checkbox" checked>
+          <span>ซ่อนแถวว่าง</span>
+        </label>
+        <label class="check">
+          <input id="issueOnly" type="checkbox">
+          <span>แสดงเฉพาะรายการมีประเด็น</span>
+        </label>
+      </div>
+      <div class="filter-chips" id="filterChips"></div>
+    </section>
+
+    <nav class="tab-nav" aria-label="Dashboard sections">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="revenue">Revenue & Cash</button>
+      <button class="tab-btn" data-tab="validation">Validation</button>
+      <button class="tab-btn" data-tab="projects">Projects / Input</button>
+    </nav>
+
+    <section class="tab-panel active" data-panel="overview">
+      <section class="goal-focus panel">
+        <div class="panel-head">
+          <div>
+            <h2 class="editable-text" data-text-key="goal.title">Goal vs Actual</h2>
+            <p class="editable-text" data-text-key="goal.subtitle">ภาพเดียวสำหรับตอบว่า ทำได้แล้วเท่าไหร่ และต้องเติมอีกเท่าไหร่</p>
+          </div>
+          <div class="panel-actions">
+            <span class="pill bad" id="goalGapBadge">Checking</span>
+            <button class="icon-btn" id="toggleTextEdit">Edit text</button>
+            <button class="icon-btn" id="resetGoalText">Reset text</button>
+          </div>
+        </div>
+        <div id="goalFocus"></div>
+      </section>
+      <section class="health-grid" id="healthGrid"></section>
+      <section class="two-col">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Executive Story</h2>
+              <p>ตัวเลขที่ควรเริ่มประชุมจากตรงนี้</p>
+            </div>
+            <button class="icon-btn collapse-btn" data-collapse-target="storyBody" aria-expanded="true">Minimize</button>
+          </div>
+          <div class="collapsible-content" id="storyBody">
+            <div id="storyCards" class="story-grid"></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Project Watchlist</h2>
+              <p>เรื่องที่ควรถามต่อทันที</p>
+            </div>
+            <button class="icon-btn collapse-btn" data-collapse-target="watchBody" aria-expanded="true">Minimize</button>
+          </div>
+          <div class="collapsible-content" id="watchBody">
+            <div id="watchCards" class="watch-list"></div>
+          </div>
+        </article>
+      </section>
+    </section>
+
+    <section class="tab-panel" data-panel="revenue">
+      <section class="visual-grid">
+        <article class="panel wide">
+          <div class="panel-head">
+            <div>
+              <h2>Money Journey</h2>
+              <p>แผนรายได้ → รายได้จริง → เงินเข้าจริง → กำไรที่รายงาน</p>
+            </div>
+            <div class="panel-actions">
+              <span class="pill" id="profitTrustBadge">Checking</span>
+              <button class="icon-btn collapse-btn" data-collapse-target="moneyBody" aria-expanded="true">Minimize</button>
+            </div>
+          </div>
+          <div class="collapsible-content" id="moneyBody">
+            <div id="waterfallChart" class="chart"></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Revenue Mix</h2>
+              <p>รายได้ actual กระจุกอยู่ที่ไหน</p>
+            </div>
+            <button class="icon-btn collapse-btn" data-collapse-target="mixBody" aria-expanded="true">Minimize</button>
+          </div>
+          <div class="collapsible-content" id="mixBody">
+            <div class="donut-wrap">
+              <div class="donut" id="mixDonut"><div id="mixCenter"></div></div>
+              <div id="mixLegend" class="legend-list"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Collection Funnel</h2>
+              <p>แยกให้เห็นว่า revenue ยังไม่เท่ากับ cash</p>
+            </div>
+            <button class="icon-btn collapse-btn" data-collapse-target="funnelBody" aria-expanded="true">Minimize</button>
+          </div>
+          <div class="collapsible-content" id="funnelBody">
+            <div id="funnelChart" class="funnel"></div>
+          </div>
+        </article>
+
+        <article class="panel wide">
+          <div class="panel-head">
+            <div>
+              <h2>Project Risk Map</h2>
+              <p>แกนนอน = ทำรายได้เทียบแผน, แกนตั้ง = เงินเข้าเทียบ actual, ขนาดวง = มูลค่า project</p>
+            </div>
+            <button class="icon-btn collapse-btn" data-collapse-target="bubbleBody" aria-expanded="true">Minimize</button>
+          </div>
+          <div class="collapsible-content" id="bubbleBody">
+            <div id="bubbleChart" class="chart"></div>
+          </div>
+        </article>
+      </section>
+    </section>
+
+    <section class="tab-panel" data-panel="validation" id="validationSection">
+      <section class="two-col">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Data Validation</h2>
+              <p>เช็คว่าเลขในไฟล์เล่าเรื่องการเงินถูกทางไหม</p>
+            </div>
+            <div class="panel-actions">
+              <span class="score" id="qualityScore">0</span>
+              <button class="icon-btn collapse-btn" data-collapse-target="validationBody" aria-expanded="true">Minimize</button>
+            </div>
+          </div>
+          <div class="collapsible-content" id="validationBody">
+            <div id="validationSummary" class="validation-summary"></div>
+            <div id="validationProjectGroups" class="validation-groups"></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Issue Guide</h2>
+              <p>อ่าน priority แบบเร็ว</p>
+            </div>
+            <button class="icon-btn collapse-btn" data-collapse-target="guideBody" aria-expanded="true">Minimize</button>
+          </div>
+          <div class="collapsible-content" id="guideBody">
+            <div class="guide-list">
+              <div><span class="severity critical">Critical</span><p>ตัวเลขอาจทำให้ profit หรือ cash อ่านผิด</p></div>
+              <div><span class="severity high">High</span><p>ควรคุยก่อนใช้ forecast หรือ meeting decision</p></div>
+              <div><span class="severity medium">Medium</span><p>ต้องตามข้อมูลเพิ่มเพื่อให้ dashboard แม่นขึ้น</p></div>
+              <div><span class="severity info">Info</span><p>ข้อมูลผิดปกติแต่ยังไม่ใช่ blocker</p></div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </section>
+
+    <section class="tab-panel" data-panel="projects" id="inputSection">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Input / Edit</h2>
+            <p>แก้ข้อมูลในตารางนี้แล้ว dashboard, validation, chart จะคำนวณใหม่ทันที</p>
+          </div>
+          <div class="panel-actions">
+            <span class="pill" id="visibleCount">0 rows</span>
+            <button class="icon-btn collapse-btn" data-collapse-target="inputBody" aria-expanded="true">Minimize</button>
+          </div>
+        </div>
+        <div class="collapsible-content" id="inputBody">
+          <div class="table-wrap">
+            <table class="input-table">
+              <thead>
+                <tr>
+                  <th>Unit</th>
+                  <th>Code</th>
+                  <th>Project</th>
+                  <th>Status</th>
+                  <th>Plan Rev.</th>
+                  <th>Actual Rev.</th>
+                  <th>Cash</th>
+                  <th>Cost Plan</th>
+                  <th>Cost Actual</th>
+                  <th>Profit Plan</th>
+                  <th>Profit Actual</th>
+                  <th>Validation</th>
+                </tr>
+              </thead>
+              <tbody id="inputRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="./assets/app.js?v=8"></script>
 </body>
 </html>
